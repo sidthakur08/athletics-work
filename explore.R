@@ -1,4 +1,4 @@
-pacman::p_load(dplyr, data.table, ggplot2, plotly, purrr, signal, gridExtra, rgl, MASS, reshape2, geometry)
+pacman::p_load(dplyr, data.table, ggplot2, plotly, purrr, signal, gridExtra)
 
 # Filtering using low-pass butterworth filter ----------------------------------
 # filter function
@@ -34,131 +34,206 @@ filter_channels <- function(channel, cutoff){
 }
 # END --------------------------------------------------------------------------
 
-swings <- read.csv("Sport Science Analyst Exercise.csv")
+swing_data <- read.csv("Sport Science Analyst Exercise.csv")
 
-colSums(is.na(swings))
+colSums(is.na(swing_data))
 
-swings <- swings %>%
+swing_data <- swing_data %>%
   group_by(player) %>%
   mutate(
     time_index = row_number(),
-    bat.speed = possibly(filter_channels, otherwise = NaN)(bat.speed, 35),
-    hand.speed = possibly(filter_channels, otherwise = NaN)(hand.speed, 35),
-    attack.angle = possibly(filter_channels, otherwise = NaN)(attack.angle, 35),
-    vertical.bat.angle = possibly(filter_channels, otherwise = NaN)(vertical.bat.angle, 35),
-    x_barrel = possibly(filter_channels, otherwise = NaN)(x_barrel, 35),
-    y_barrel = possibly(filter_channels, otherwise = NaN)(y_barrel, 35),
-    z_barrel = possibly(filter_channels, otherwise = NaN)(z_barrel, 35),
+    bat.speed = possibly(filter_channels, otherwise = NaN)(bat.speed, 25),
+    hand.speed = possibly(filter_channels, otherwise = NaN)(hand.speed, 25),
+    attack.angle = possibly(filter_channels, otherwise = NaN)(attack.angle, 25),
+    vertical.bat.angle = possibly(filter_channels, otherwise = NaN)(vertical.bat.angle, 25),
+    vertical.bat.angle = possibly(filter_channels, otherwise = NaN)(vertical.bat.angle, 25),
+    x_barrel = possibly(filter_channels, otherwise = NaN)(x_barrel, 10),
+    y_barrel = possibly(filter_channels, otherwise = NaN)(y_barrel, 10),
+    z_barrel = possibly(filter_channels, otherwise = NaN)(z_barrel, 10),
     flag = ifelse(row_number() >= which.max(bat.speed), 1, 0)
     ) %>% ungroup()
 
-write.csv(swings,"filtered_swings.csv", row.names = FALSE)
+# # Split velocity.vector and velocity.vector2 into their x, y, z components
+# swing_data <- swing_data %>%
+#   mutate(
+#     velocity.vector = sub("\\[", "", velocity.vector),
+#     velocity.vector = sub("\\]", "", velocity.vector),
+#     velocity.vector2 = sub("\\[", "", velocity.vector2),
+#     velocity.vector2 = sub("\\]", "", velocity.vector2),
+#   ) %>%
+#   
+#   separate(velocity.vector, into = c("velocity_x", "velocity_y", "velocity_z"), sep = ",", convert = TRUE) %>%
+#   separate(velocity.vector2, into = c("velocity2_x", "velocity2_y", "velocity2_z"), sep = ",", convert = TRUE) %>%
+#   mutate(
+#     vaa = tan(velocity_z/velocity_x), 
+#     haa = tan(velocity_x/velocity_y))
 
-batSpeed_plot <- ggplot(swings, aes(x = time_index, y=bat.speed, color=player)) +
-  geom_line(data = swings[swings['flag']==0,],  linetype = 'solid') +
-  geom_line(data = swings[swings['flag']==1,],  linetype = 'dashed') +
+write.csv(swing_data,"filtered_swings.csv", row.names = FALSE)
+
+batSpeed_plot <- ggplot(swing_data, aes(x = time_index, y=bat.speed, color=player)) +
+  geom_line(data = swing_data[swing_data['flag']==0,],  linetype = 'solid') +
+  geom_line(data = swing_data[swing_data['flag']==1,],  linetype = 'dashed') +
   labs(title = "Bat Speed Comparison Between Players", x = "Time Index", y = "Bat Speed") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
   theme_minimal()
 batSpeed_plot
 
-vba_plot <- ggplot(swings, aes(x = time_index, y=vertical.bat.angle, color=player)) +
-  geom_line(data = swings[swings['flag']==0,],  linetype = 'solid') +
-  geom_line(data = swings[swings['flag']==1,],  linetype = 'dashed') +
+vba_plot <- ggplot(swing_data, aes(x = time_index, y=vertical.bat.angle, color=player)) +
+  geom_line(data = swing_data[swing_data['flag']==0,],  linetype = 'solid') +
+  geom_line(data = swing_data[swing_data['flag']==1,],  linetype = 'dashed') +
   labs(title = "Vertical Bat Angle Comparison Between Players", x = "Time Index", y = "Vertical Bat Angle") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
   theme_minimal()
 vba_plot
 
-attackAngle_plot <- ggplot(swings, aes(x = time_index, y=attack.angle, color=player)) +
-  geom_line(data = swings[swings['flag']==0,],  linetype = 'solid') +
-  geom_line(data = swings[swings['flag']==1,],  linetype = 'dashed') +
+attackAngle_plot <- ggplot(swing_data, aes(x = time_index, y=attack.angle, color=player)) +
+  geom_line(data = swing_data[swing_data['flag']==0,],  linetype = 'solid') +
+  geom_line(data = swing_data[swing_data['flag']==1,],  linetype = 'dashed') +
   labs(title = "Attack Angle Speed Comparison Between Players", x = "Time Index", y = "Attack Angle") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
   theme_minimal()
 attackAngle_plot
 
-handSpeed_plot <- ggplot(swings, aes(x = time_index, y=hand.speed, color=player)) +
-  geom_line(data = swings[swings['flag']==0,],  linetype = 'solid') +
-  geom_line(data = swings[swings['flag']==1,],  linetype = 'dashed') +
+handSpeed_plot <- ggplot(swing_data, aes(x = time_index, y=hand.speed, color=player)) +
+  geom_line(data = swing_data[swing_data['flag']==0,],  linetype = 'solid') +
+  geom_line(data = swing_data[swing_data['flag']==1,],  linetype = 'dashed') +
   labs(title = "Hand Speed Comparison Between Players", x = "Time Index", y = "Hand Speed") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
   theme_minimal()
 handSpeed_plot
 
+body_rot_plot <- ggplot(swing_data, aes(x = time_index, y = body.rotation.rate, color = player)) +
+  geom_line(data = swing_data[swing_data$flag == 0, ], linetype = 'solid') +
+  geom_line(data = swing_data[swing_data$flag == 1, ], linetype = 'dashed') +
+  labs(title = "Body Rotation Rate between Players", x = "Time Index", y = "Body Rotation Rate") +
+  scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
+  theme_minimal()
+body_rot_plot
+
+bat_rot_plot <- ggplot(swing_data, aes(x = time_index, y = bat.rotation.rate, color = player)) +
+  geom_line(data = swing_data[swing_data$flag == 0, ], linetype = 'solid') +
+  geom_line(data = swing_data[swing_data$flag == 1, ], linetype = 'dashed') +
+  labs(title = "Body Rotation Rate between Players", x = "Time Index", y = "Bat Rotation Rate") +
+  scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
+  theme_minimal()
+bat_rot_plot
+
 # Create a bird's eye view plot of the hitter's swing using x, y coordinates of barrel
-bird_eye_view <- ggplot(swings) +
-  geom_path(data = swings[swings['flag']==0,], aes(x = x_barrel, y = y_barrel, color = player), size=1, alpha=0.7) +
-  geom_path(data = swings[swings['flag']==1,], aes(x = x_barrel, y = y_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
+bird_eye_view <- ggplot(swing_data) +
+  geom_path(data = swing_data[swing_data['flag']==0,], aes(x = x_barrel, y = y_barrel, color = player), size=1, alpha=0.7) +
+  geom_path(data = swing_data[swing_data['flag']==1,], aes(x = x_barrel, y = y_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
   labs(title = "Bird's Eye View of Hitter's Swing", x = "X Coordinate", y = "Y Coordinate") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
   xlim(-1.5, 1.5) +
   ylim(-1, 1) +
   theme_minimal()
+bird_eye_view
 
 # Create a side view plot of the hitter's swing using y, z coordinates of barrel
-first_base_view <- ggplot(swings) +
-  geom_path(data = swings[swings['flag']==0,], aes(x = y_barrel, y = z_barrel, color = player), size=1, alpha=0.7) +
-  geom_path(data = swings[swings['flag']==1,], aes(x = y_barrel, y = z_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
+first_base_view <- ggplot(swing_data) +
+  geom_path(data = swing_data[swing_data['flag']==0,], aes(x = y_barrel, y = z_barrel, color = player), size=1, alpha=0.7) +
+  geom_path(data = swing_data[swing_data['flag']==1,], aes(x = y_barrel, y = z_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
   labs(title = "Side View of Hitter's Swing", x = "Y Coordinate", y = "Z Coordinate") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
-  xlim(-1, 1) +
+  xlim(1, -1) +
   ylim(-1, 2) +
   theme_minimal()
+first_base_view
 
 # # Create a catcher view plot of the hitter's swing using z, x coordinates of barrel
-# catcher_view <- ggplot(swings) +
-#   geom_path(aes(x = z_barrel, y = x_barrel, color = player), size = 1, alpha = 0.7) +
+# catcher_view <- ggplot(swing_data) +
+#   geom_path(data = swing_data[swing_data['flag']==0,], aes(x = z_barrel, y = x_barrel, color = player), size=1, alpha=0.7) +
+#   geom_path(data = swing_data[swing_data['flag']==1,], aes(x = z_barrel, y = x_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
 #   labs(title = "Catcher View of Hitter's Swing", x = "X Coordinate", y = "Y Coordinate") +
 #   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
 #   xlim(-1.5, 2) +
 #   ylim(-1.5, 1.5) +
 #   theme_minimal()
+# catcher_view
 
-grid.arrange(bird_eye_view, first_base_view, ncol = 2)
-
-# Visualization 1: 3D Swing Path
-swing1 <- swings %>% dplyr::filter(player == "Player 1")
-plot3d(swing1$x_barrel, swing1$y_barrel, swing1$z_barrel, type = 'l', col = 'blue',
-       xlab = 'X Position', ylab = 'Y Position', zlab = 'Z Position',
-       main = '3D Swing Path')
+swing1 <- swing_data %>%
+  dplyr::filter(player == "Player 1") %>%
+  select(x_knob, y_knob, z_knob, x_barrel, y_barrel, z_barrel) %>%
+  slice_tail(n = -120)
+swing2 <- swing_data %>%
+  dplyr::filter(player == "Player 2") %>%
+  select(x_knob, y_knob, z_knob, x_barrel, y_barrel, z_barrel) %>%
+  slice_tail(n = -120)
 
 # Create vectors that interleave barrel and knob coordinates with NA to separate segments
-x_coords <- c(rbind(swing1$x_barrel, swing1$x_knob, NA))
-y_coords <- c(rbind(swing1$y_barrel, swing1$y_knob, NA))
-z_coords <- c(rbind(swing1$z_barrel, swing1$z_knob, NA))
+x_coords1 <- c(rbind(swing1$x_barrel, swing1$x_knob, NA))
+y_coords1 <- c(rbind(swing1$y_barrel, swing1$y_knob, NA))
+z_coords1 <- c(rbind(swing1$z_barrel, swing1$z_knob, NA))
 
-# Plot the line segments connecting barrel and knob at each time stamp
-p <- plot_ly(type = 'scatter3d', mode = 'lines') %>%
+x_coords2 <- c(rbind(swing2$x_barrel, swing2$x_knob, NA))
+y_coords2 <- c(rbind(swing2$y_barrel, swing2$y_knob, NA))
+z_coords2 <- c(rbind(swing2$z_barrel, swing2$z_knob, NA))
+
+p <- plot_ly(type = 'scatter3d', mode="lines") %>%
   add_trace(
-    x = x_coords,
-    y = y_coords,
-    z = z_coords,
+    x = x_coords1,
+    y = y_coords1,
+    z = z_coords1,
     line = list(color = 'blue', width = 2),
-    showlegend = FALSE
+    opacity = 0.25,
+    showlegend = TRUE,
+    name = 'Player 1'
+  ) %>%
+  add_trace(
+    x = x_coords2,
+    y = y_coords2,
+    z = z_coords2,
+    line = list(color = 'red', width = 2),
+    opacity = 0.25,
+    showlegend = TRUE,
+    name = 'Player 2'
+  ) %>%
+  add_trace(
+    x = swing1$x_knob,
+    y = swing1$y_knob,
+    z = swing1$z_knob,
+    type = 'scatter3d',
+    mode = 'markers',
+    marker = list(size = 3, color = 'orange'),
+    showlegend=FALSE,
+    opacity = 0.2
+  ) %>%
+  add_trace(
+    x = swing2$x_knob,
+    y = swing2$y_knob,
+    z = swing2$z_knob,
+    type = 'scatter3d',
+    mode = 'markers',
+    marker = list(size = 3, color = 'green'),
+    showlegend=FALSE,
+    opacity = 0.2
+  ) %>%
+  add_trace(
+    x = c(0, 4/12, 4/12, -4/12, -4/12, 0, 4/12, 4/12, -4/12, -4/12),
+    y = c(0, 4/12, 7/12, 7/12, 4/12, 0, 4/12, 7/12, 7/12, 4/12) + (-1),
+    z = c(0, 0, 0, 0, 0, -.5/12, -.5/12, -.5/12, -.5/12, -.5/12) - 1,
+    type = 'mesh3d',
+    alphahull = 0,
+    opacity=0.5,
+    colorscale=list(c(0,'black'),
+                    c(1,'black')),
+    intensity = c(1,1,1,1,1,1,1,1,1,1),
+    flatshading = TRUE,
+    showscale = FALSE,
+    text = 'HomePlate',
+    hoverinfo = 'text',
+    showlegend = FALSE) %>%
+  layout(
+    scene = list(
+      xaxis = list(nticks = 8, zeroline = FALSE, title = 'x', showspikes = FALSE, range = c(-1.5, 2)),
+      yaxis = list(nticks = 8, zeroline = FALSE, title = 'y', showspikes = FALSE, range = c(-1,1)),
+      zaxis = list(nticks = 8, zeroline = FALSE, title = 'z', showspikes = FALSE, range = c(-1.5, 2)),
+      camera = list(
+        up = list(x = 0, y = 0, z = 2.5),
+        center = list(x = 0, y = 0, z = 0),
+        eye = list(x = -2.2, y = 0, z = 0.8)
+      ),
+      aspectmode = 'cube'
+    )
   )
-
-# Add markers for the barrel positions over time
-p <- p %>% add_trace(
-  x = swing1$x_barrel,
-  y = swing1$y_barrel,
-  z = swing1$z_barrel,
-  type = 'scatter3d',
-  mode = 'markers',
-  marker = list(size = 3, color = 'red'),
-  name = 'Barrel'
-)
-
-# Add markers for the knob positions over time
-p <- p %>% add_trace(
-  x = swing1$x_knob,
-  y = swing1$y_knob,
-  z = swing1$z_knob,
-  type = 'scatter3d',
-  mode = 'markers',
-  marker = list(size = 3, color = 'green'),
-  name = 'Knob'
-)
-
-# Display the plot
 p

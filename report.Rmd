@@ -29,14 +29,17 @@ swing_data <- read.csv("Sport Science Analyst Exercise.csv") %>%
 colSums(is.na(swing_data))
 
 # Filtering using low-pass Butterworth filter
-filter_channels <- function(channel, cutoff) {
+# input 
+#   - channel : column vector containing the signal values
+#   - threshold : frequency threshold to pass lower frequency signals
+filter_channels <- function(channel, threshold) {
   if(is.na(channel[1])) {
     channel[1] <- channel[2]
   }
   if(is.na(tail(channel, n=1))) {
     channel[length(channel)] <- tail(channel, n=2)[1]
   }
-  bf <- signal::butter(2, cutoff/(300/2))
+  bf <- signal::butter(2, threshold/(300/2))
   fake <- round(length(channel) * 0.2)
   reflected_col <- c(rev(channel[1:fake]), channel, rev(tail(channel, n=fake)))
   filtered_col <- signal::filtfilt(bf, reflected_col)
@@ -52,20 +55,22 @@ swing_data <- swing_data %>%
     hand.speed = possibly(filter_channels, otherwise = NaN)(hand.speed, 25),
     attack.angle = possibly(filter_channels, otherwise = NaN)(attack.angle, 25),
     vertical.bat.angle = possibly(filter_channels, otherwise = NaN)(vertical.bat.angle, 25),
-    x_barrel = possibly(filter_channels, otherwise = NaN)(x_barrel, 10),
-    y_barrel = possibly(filter_channels, otherwise = NaN)(y_barrel, 10),
-    z_barrel = possibly(filter_channels, otherwise = NaN)(z_barrel, 10),
-    x_knob = possibly(filter_channels, otherwise = NaN)(x_knob, 10),
-    y_knob = possibly(filter_channels, otherwise = NaN)(y_knob, 10),
-    z_knob = possibly(filter_channels, otherwise = NaN)(z_knob, 10),
+    x_barrel = possibly(filter_channels, otherwise = NaN)(x_barrel, 15),
+    y_barrel = possibly(filter_channels, otherwise = NaN)(y_barrel, 15),
+    z_barrel = possibly(filter_channels, otherwise = NaN)(z_barrel, 15),
+    x_knob = possibly(filter_channels, otherwise = NaN)(x_knob, 15),
+    y_knob = possibly(filter_channels, otherwise = NaN)(y_knob, 15),
+    z_knob = possibly(filter_channels, otherwise = NaN)(z_knob, 15),
     flag = ifelse(row_number() >= which.max(bat.speed), 1, 0)
   ) %>%
   mutate(across(where(is.numeric), ~ round(., 3))) %>%
   ungroup()
+
+write.csv(swing_data,"filtered_swings.csv", row.names = FALSE)
 ```
 :::::::::::::: {.columns}
 ::: {.column width="50%"}
-# 3D Visualization of Swings
+# Fig 1. 3D Visualization of Swings
 ```{r 3D-viz, echo=FALSE, fig.align='center', warning=FALSE}
 swing1 <- swing_data %>%
   dplyr::filter(player == "Player 1") %>%
@@ -125,8 +130,8 @@ plot_ly(type = 'scatter3d', mode="lines") %>%
     opacity = 0.2
   ) %>%
   add_trace(
-    x = c(0, 4/12, 4/12, -4/12, -4/12, 0, 4/12, 4/12, -4/12, -4/12),
-    y = c(0, 4/12, 7/12, 7/12, 4/12, 0, 4/12, 7/12, 7/12, 4/12) + (-1),
+    x = c(0, 5/12, 5/12, -5/12, -5/12, 0, 5/12, 5/12, -5/12, -5/12),
+    y = c(0, 5/12, 8/12, 8/12, 5/12, 0, 5/12, 8/12, 8/12, 5/12) + (-1),
     z = c(0, 0, 0, 0, 0, -.5/12, -.5/12, -.5/12, -.5/12, -.5/12) - 1,
     type = 'mesh3d',
     alphahull = 0,
@@ -157,42 +162,32 @@ plot_ly(type = 'scatter3d', mode="lines") %>%
 :::
 ::: {.column width="50%"}
 \
+
+##### ***Question 1 - Create a compelling visual of each swing. Please provide any code snippet you use to create the visual.***\
+**Approach** : Sifted through the data by checking NaNs, got summary statistics, and since this was a time series dataset, plotted time series trends. From the time series trends, I noticed some **ups and downs in variables like bat speed, hand speed, etc.** which can be attributed to **noise** while collecting data from the blast sensors. To counter this and smoothen the noise, I used a **low-pass butterworth filter** having a threshold of **25Hz for the metrics** in the time series plots and **15 Hz for barrel & knob tracking data**, since . The filter then handles this noise by allowing the low-frequency signals to pass through while reducing higher-frequency noise, ensuring the **filtered signal is smooth**. This is something I have seen being used for batter swings in my experience.\
 \
-**1. Approach** : Sift through the data by checking NaNs, getting summary statistics, and since this is a time series data, plot time series trends. From the time series trends, I noticed some ups and downs in variables like bat speed, hand speed, etc. which can be attributed to noise while collecting the data. I used a low-pass butterworth filter having a cutoff of 25Hz for the metrics in the time series plots and 10 Hz for barrel & knob tracking data.\
-After that I focused on dividing the visuals into two parts with the swing views from three different perspectives and time series plots of the metrics. I also added a 3D figure to properly visualize the swing path.
+After that I focused on dividing the visuals into two main parts with one showing the swing visual and other plotting the time series trends of the metric. **Figure 1** shows a **3D visualization** of the two swings, while **Figure 2** gives you the option to look at the swing trajectory from three different perspectives - **Top, Side and Catcher**. **Figure 3** plots the time series trends of the different metrics present in this dataset - Bat & Hand Speed, Vertical Attack Angle (VAA), Vertical Bat Angle (VBA) and Bat & Body Rotational Rates.
 \
 \
-**2. Observation** : Considering similar pitch conditions for both the players, I came up with the following observations.  
+**Assumption** - While making these plots, I wanted to separate pre-contact and post-contact swing path and metrics to get more idea about the swing and keep things clean. Therefore, I made the assumption that contact with the pitch will ideally be made at max bat speed. Player 2 makes contact before Player 1 by specifically 8 time indices or frames. **Note,** the 3D visualization does not contain this separation. Apart from this, I have also assumed that the bat vector being tracked is the sweet spot of the bat instead of tip of the bat.\
+Also, after playing around with the data for the 3D visualization, I found that,\
 
-:::::::::::::: {.columns}
-::: {.column width="50%" style="padding-right:10px;"}
-<center> Player 1 </center>
+* x - Towards the 1B to 3B
+* y - From Home Plate to 2B
+* z - Up and Down
 
-Player 1 has a gradual downward swing that transitions into a steep upward motion, indicating a focus on producing lift, with relatively controlled body rotation and an elevated vertical bat angle to maximize fly ball potential. Their extended bat path post-contact, though slightly slower in achieving the same level of bat speed, is characterized by a controlled swing. This could result into swings with higher launch angles and better adjustability to pitches in different locations.
-
----
-
-:::
-::: {.column width="50%" style="border-left: 1px solid; padding-left: 10px;"}
-<center> Player 2 </center>
-
-Player 2 shows an aggressive swing that levels off near contact with a compact follow-through (from 3D Viz), achieving higher bat speed but also a flattened bat path, indicating a more explosive swing focused on power with potentially a line-drive approach. This aggressive approach might help with high exit velocity, but it might also result into ground outs due to the bat path.
-
----
-
-:::
-::::::::::::::
-
-**3. Extension** : 
-
+\
+**Additionally**, given more context on the data, I would like to add more things to this report, like using velocity vectors of the barrel and knob to find the vertical and horizontal attack angles as well (even though we do have the vertical attack angle from blast, we can probably refine it using the barrel being tracked).
+\
+\
 :::
 ::::::::::::::
 
 :::::::::::::: {.columns}
 ::: {.column width="50%"}
-# Swing views
+# Fig 2. Swing Views
 ## { .tabset}
-### Bird's Eye View
+### Top View
 ```{r bird-eye-view, echo=FALSE, warning=FALSE}
 ggplotly(ggplot(swing_data) +
   geom_path(data = swing_data[swing_data$flag == 0, ], aes(x = x_barrel, y = y_barrel, color = player), size = 1, alpha = 0.7) +
@@ -230,9 +225,9 @@ ggplotly(ggplot(swing_data) +
 :::
 ::: {.column width="50%"}
 
-# Metric Trends
+# Fig 3. Metric Trends
 ## { .tabset}
-### BatSpeed & HandSpeed
+### Bat Speed & Hand Speed
 ```{r bat-hand-speed, echo=FALSE}
 # Create metric trend plots
 batSpeed_plot <- ggplot(swing_data, aes(x = time_index, y = bat.speed, color = player)) +
@@ -271,7 +266,7 @@ attackAngle_plot <- ggplot(swing_data, aes(x = time_index, y = attack.angle, col
 subplot(ggplotly(vba_plot), ggplotly(attackAngle_plot), titleX = T, titleY = T, nrows = 2)
 ```
 
-### Rotational
+### Rotational Rate
 ``` {r rotation-rate, echo=FALSE}
 body_rot_plot <- ggplot(swing_data, aes(x = time_index, y = body.rotation.rate, color = player)) +
   geom_line(data = swing_data[swing_data$flag == 0, ], linetype = 'solid') +
@@ -292,3 +287,32 @@ subplot(ggplotly(body_rot_plot), ggplotly(bat_rot_plot), titleX = T, titleY = T,
 ```
 :::
 ::::::::::::::
+
+##### ***Question 2 - Tell us about each swing.***\
+**Comparison** : Considering similar pitch conditions for both the players, I came up with the following observations. Before looking into the differences between the two swings, I did notice that both the swings had a common point in space where the assumed contact was made, even though the approach and follow-through were different between the swings. They also had **similar bat speed** after filtering the noise in the data, with Player 1 having very slightly higher bat speed than Player 2.
+
+:::::::::::::: {.columns}
+::: {.column width="50%" style="padding-right:10px;"}
+<center> **Player 1** </center>
+
+Player 1 has a gradual downward swing that transitions into a steep upward motion, indicating a **focus on producing lift**, with relatively **controlled body rotation** (as seen in Figure 3 - Rotational Rate) and an **elevated vertical bat angle** (as seen in Figure 3 - Vertical Bat Angle) to maximize fly ball potential. Player 1's extended bat path post-contact, though slightly **slower in achieving the same level of bat speed**, is characterized by a **controlled swing**. This could result into swings with **higher launch angles and better adjustability to pitches** in different locations.
+
+---
+
+:::
+::: {.column width="50%" style="border-left: 1px solid; padding-left: 10px;"}
+<center> **Player 2** </center>
+
+Player 2 shows an **aggressive swing** that levels off near contact with a compact follow-through (from Figure 1 - 3D Viz), achieving the similar bat speed but also a **flattened bat path**, indicating a more explosive swing focused on power with potentially a **line-drive approach**. This aggressive approach might help with **high exit velocity**, but it might also result into **ground outs** due to the bat path.
+
+---
+
+:::
+::::::::::::::
+
+##### ***Question 3 - Propose a project using more of this data. If you were to build a model to examine how effective a swing is, what inputs from this would you use? What extra data would you want? What assumptions do you need to make on the swings? What would your model look like?***\
+
+* To predict and understand swing effectiveness, I would use metrics like **expected weighted On-Base Average (xwOBA)** or **Quality of Contact** or **Run Value** as the dependent variables in my analysis. We can also build models on Launch Angles and Exit Velocity, to see how which swings result into higher values. From the current dataset, I would incorporate swing mechanics variables such as **bat speed**, **attack angle** (both vertical and horizontal), **vertical bat angle**, and **rotational rates** at the point of contact.\
+* Recognizing that hitting performance is highly influenced by the specific characteristics of each pitch, I would also include pitch variables like **pitch type, pitch location, and vertical approach angle**. Adding contextual variables such as the **count (balls and strikes) and game situation (run differential and runners on base)** would help account for changes in a player's swing approach under different circumstances.\
+* Initially, I would aim to build a **linear regression model** with these metrics to predict xwOBA or Quality of Contact. Including pitch and contextual variables minimizes assumptions like presuming swing mechanics alone are sufficient to examine swing effectiveness or that hitters maintain the same swing regardless of the count (e.g., swinging the same on a 3-0 count as on an 0-2 count).\
+* To capture complex nonlinear relationships that a linear model might miss, I would extend this analysis using **XGBoost** or other tree-based models. As an additional examination over swing effectiveness, I would employ a **mixed-effects model**, treating individual **hitter** and/or **pitcher IDs** as **random effects** while considering the previously mentioned metrics as fixed effects. This approach allows us to account for unobserved variability among players and matchups, providing better understanding of the factors influencing swings.\

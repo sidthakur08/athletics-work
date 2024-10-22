@@ -113,7 +113,7 @@ body_rot_plot
 bat_rot_plot <- ggplot(swing_data, aes(x = time_index, y = bat.rotation.rate, color = player)) +
   geom_line(data = swing_data[swing_data$flag == 0, ], linetype = 'solid') +
   geom_line(data = swing_data[swing_data$flag == 1, ], linetype = 'dashed') +
-  labs(title = "Body Rotation Rate between Players", x = "Time Index", y = "Bat Rotation Rate") +
+  labs(title = "Bat Rotation Rate between Players", x = "Time Index", y = "Bat Rotation Rate") +
   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
   theme_minimal()
 bat_rot_plot
@@ -140,16 +140,16 @@ first_base_view <- ggplot(swing_data) +
   theme_minimal()
 first_base_view
 
-# # Create a catcher view plot of the hitter's swing using z, x coordinates of barrel
-# catcher_view <- ggplot(swing_data) +
-#   geom_path(data = swing_data[swing_data['flag']==0,], aes(x = z_barrel, y = x_barrel, color = player), size=1, alpha=0.7) +
-#   geom_path(data = swing_data[swing_data['flag']==1,], aes(x = z_barrel, y = x_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
-#   labs(title = "Catcher View of Hitter's Swing", x = "X Coordinate", y = "Y Coordinate") +
-#   scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
-#   xlim(-1.5, 2) +
-#   ylim(-1.5, 1.5) +
-#   theme_minimal()
-# catcher_view
+# Create a catcher view plot of the hitter's swing using z, x coordinates of barrel
+catcher_view <- ggplot(swing_data) +
+  geom_path(data = swing_data[swing_data['flag']==0,], aes(x = z_barrel, y = x_barrel, color = player), size=1, alpha=0.7) +
+  geom_path(data = swing_data[swing_data['flag']==1,], aes(x = z_barrel, y = x_barrel, color = player), size=1, alpha=0.7, linetype = 'dashed') +
+  labs(title = "Catcher View of Hitter's Swing", x = "X Coordinate", y = "Y Coordinate") +
+  scale_color_manual(values = c("Player 1" = "blue", "Player 2" = "red")) +
+  xlim(-1.5, 2) +
+  ylim(-1.5, 1.5) +
+  theme_minimal()
+catcher_view
 
 swing1 <- swing_data %>%
   dplyr::filter(player == "Player 1") %>%
